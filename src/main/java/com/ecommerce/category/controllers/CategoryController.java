@@ -3,16 +3,13 @@ package com.ecommerce.category.controllers;
 import com.ecommerce.category.exceptions.ResourceNotFoundException;
 import com.ecommerce.category.models.dtos.CategoryRequest;
 import com.ecommerce.category.models.dtos.CategoryResponse;
+import com.ecommerce.category.services.CategoryFilterService;
 import com.ecommerce.category.services.CategoryService;
 import com.ecommerce.category.validations.CategoryValidator;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -21,20 +18,27 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @CrossOrigin(origins = {"http://localhost:4200"})
 @RestController
 @RequestMapping("/categories")
 public class CategoryController {
+    private final CategoryFilterService categoryFilterService;
+    private final CategoryValidator categoryValidator;
     private final CategoryService categoryService;
     private final ObjectMapper objectMapper;
-    private final CategoryValidator categoryValidator;
 
-    public CategoryController(CategoryService categoryService, ObjectMapper objectMapper, CategoryValidator categoryValidator) {
+    public CategoryController(
+            CategoryFilterService categoryFilterService,
+            CategoryService categoryService,
+            ObjectMapper objectMapper,
+            CategoryValidator categoryValidator
+    ) {
+        this.categoryFilterService = categoryFilterService;
         this.categoryService = categoryService;
         this.objectMapper = objectMapper;
         this.categoryValidator = categoryValidator;
-        this.objectMapper.registerModule(new JavaTimeModule());
     }
 
     @GetMapping
@@ -43,7 +47,7 @@ public class CategoryController {
     }
     //  Prueba
     @PostMapping("/bulk")
-    public ResponseEntity<List<CategoryResponse>> getCategoriesByIds(@RequestBody List<Long> ids) {
+    public ResponseEntity<List<CategoryResponse>> getCategoriesByIds(@RequestBody List<UUID> ids) {
         return ResponseEntity.ok(categoryService.findCategories(ids));
     }
 
@@ -62,12 +66,12 @@ public class CategoryController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<CategoryResponse> detail(@PathVariable Long id) {
+    public ResponseEntity<CategoryResponse> detail(@PathVariable UUID id) {
         return categoryService.findCategory(id).map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
     }
 
     @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<?> update(@PathVariable Long id, @RequestPart @Valid String category, @RequestPart(required = false) MultipartFile file) throws JsonProcessingException {
+    public ResponseEntity<?> update(@PathVariable UUID id, @RequestPart @Valid String category, @RequestPart(required = false) MultipartFile file) throws JsonProcessingException {
         //  Convertimos el JSON recibido a CategoryRequest
         CategoryRequest request = objectMapper.readValue(category, CategoryRequest.class);
         //  Centralizar validación
@@ -81,24 +85,21 @@ public class CategoryController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
+    public ResponseEntity<Void> delete(@PathVariable UUID id) {
         categoryService.deleteCategory(id);
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/page")
     public ResponseEntity<Page<CategoryResponse>> getAllPaged(
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) Boolean status,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "id") String sortBy,
-            @RequestParam(defaultValue = "asc") String direction
+            @RequestParam(defaultValue = "5") int size,
+            @RequestParam(defaultValue = "") String sortBy,
+            @RequestParam(defaultValue = "") String sortDir
     ) {
-        Sort sort = direction.equalsIgnoreCase(Sort.Direction.ASC.name())
-                ? Sort.by(sortBy).ascending()
-                : Sort.by(sortBy).descending();
-
-        Pageable pageable = PageRequest.of(page, size, sort);
-        Page<CategoryResponse> categories = categoryService.getAllPaged(pageable);
+        Page<CategoryResponse> categories = categoryFilterService.filterCategory(name, status, page, size, sortBy, sortDir);
         return ResponseEntity.ok(categories);
     }
 }

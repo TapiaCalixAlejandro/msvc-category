@@ -9,8 +9,6 @@ import com.ecommerce.category.repositories.CategoryRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -23,16 +21,19 @@ import java.nio.file.StandardCopyOption;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 public class CategoryServiceImpl implements CategoryService {
+    private static final Logger log = LoggerFactory.getLogger(CategoryServiceImpl.class);
+    private final CategoryRepository categoryRepository;
+    private final CategoryMapper categoryMapper;
     @Value("${app.upload.dir}")
     private String uploadDir;
-    private final CategoryRepository categoryRepository;
-    private static final Logger log = LoggerFactory.getLogger(CategoryServiceImpl.class);
 
-    public CategoryServiceImpl(CategoryRepository categoryRepository) {
+    public CategoryServiceImpl(CategoryRepository categoryRepository, CategoryMapper categoryMapper) {
         this.categoryRepository = categoryRepository;
+        this.categoryMapper = categoryMapper;
     }
 
     //  Listar todas las categorias
@@ -50,7 +51,7 @@ public class CategoryServiceImpl implements CategoryService {
             }
              log.info("Se encontraron {} categorias registradas.", categories.size());
 
-            return categories.stream().map(CategoryMapper::toResponse).toList();
+            return categories.stream().map(categoryMapper::toResponse).toList();
         } catch (Exception e) {
             log.error("Error al obtener la lista de categorias: {}", e.getMessage(), e);
             throw new DatabaseException("Error al consultar categorias.", e);
@@ -69,7 +70,7 @@ public class CategoryServiceImpl implements CategoryService {
         //Category savedCategory = null;
         try {
             //  Convertir DTO en Entidad
-            Category category = CategoryMapper.toEntity(request);
+            Category category = categoryMapper.toEntity(request);
 
             //  Creamos primero sin imagen (para obtener el ID)
             Category savedCategory = categoryRepository.save(category);
@@ -84,7 +85,7 @@ public class CategoryServiceImpl implements CategoryService {
             }
 
             //  Devolvemos el DTO de respuesta
-            return CategoryMapper.toResponse(savedCategory);
+            return categoryMapper.toResponse(savedCategory);
         } catch (IOException e) {
             log.error("Error al guardar la imagen de la categoría '{}': {}", request.getName(), e.getMessage());
             throw new FileStorageException("Error al subir archivo: " + e.getMessage(), e);
@@ -94,29 +95,29 @@ public class CategoryServiceImpl implements CategoryService {
     //  Buscar categoria por ID
     @Transactional(readOnly = true)
     @Override
-    public Optional<CategoryResponse> findCategory(Long id) {
+    public Optional<CategoryResponse> findCategory(UUID id) {
         log.info("Obteniendo detalle de categoría con ID: {}", id);
         Category category = categoryRepository.findById(id).orElseThrow(() -> {
             log.warn("No se encontró la categoría con ID: {}", id);
             return new ResourceNotFoundException("La categoria con el ID: " + id + " no existe.");
         });
-        return Optional.of(CategoryMapper.toResponse(category));
+        return Optional.of(categoryMapper.toResponse(category));
     }
 
     //  Buscar varias categorias por ID
     @Transactional(readOnly = true)
     @Override
-    public List<CategoryResponse> findCategories(List<Long> ids) {
+    public List<CategoryResponse> findCategories(List<UUID> ids) {
         return categoryRepository.findAllById(ids)
                 .stream()
-                .map(CategoryMapper::toResponse)
+                .map(categoryMapper::toResponse)
                 .toList();
     }
 
     //  Actualizar categoria
     @Transactional
     @Override
-    public Optional<CategoryResponse> updateCategory(Long id, CategoryRequest request, MultipartFile file) {
+    public Optional<CategoryResponse> updateCategory(UUID id, CategoryRequest request, MultipartFile file) {
         log.info("Inicializando actualización de categoría con ID: {}", id);
         Category exists = categoryRepository.findById(id)
                 .orElseThrow(() -> {
@@ -142,7 +143,7 @@ public class CategoryServiceImpl implements CategoryService {
 
             Category update = categoryRepository.save(exists);
             log.info("Categoría actualizada correctamente con ID: {}", update.getId());
-            return Optional.of(CategoryMapper.toResponse(update));
+            return Optional.of(categoryMapper.toResponse(update));
         } catch (IOException e) {
             log.error("Error al actualizar categoría con ID {} : {}", id,e.getMessage(),e);
             throw new FileStorageException("Error al actualizar archivo: " + e.getMessage(), e);
@@ -152,7 +153,7 @@ public class CategoryServiceImpl implements CategoryService {
     //  Eliminar categoria
     @Transactional
     @Override
-    public void deleteCategory(Long id) {
+    public void deleteCategory(UUID id) {
         if (!categoryRepository.existsById(id)) {
             throw new ResourceNotFoundException("No se puede eliminar: la categoría con ID: " + id + " no existe.");
         }
@@ -160,7 +161,7 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     //  Metodo reutilizable para manejar la logica de la imagen (Creacion y modificacion)
-    private String handleImageUpload(MultipartFile file, String oldImageName, Long id) throws IOException {
+    private String handleImageUpload(MultipartFile file, String oldImageName, UUID id) throws IOException {
         Path uploadPath = Paths.get(uploadDir);
         if (!Files.exists(uploadPath)) {
             Files.createDirectories(uploadPath);
@@ -182,9 +183,9 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     //  Paginacion
-    @Transactional(readOnly = true)
-    @Override
-    public Page<CategoryResponse> getAllPaged(Pageable pageable) {
-        return categoryRepository.findAll(pageable).map(CategoryMapper::toResponse);    //  Convertimos cada entidad en DTO
-    }
+    //@Transactional(readOnly = true)
+    //@Override
+    //public Page<CategoryResponse> getAllPaged(Pageable pageable) {
+    //    return categoryRepository.findAll(pageable).map(CategoryMapper::toResponse);    //  Convertimos cada entidad en DTO
+    //}
 }

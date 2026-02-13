@@ -1,31 +1,31 @@
 package com.ecommerce.category.models.entities;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "categories")
 public class Category {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private UUID id;
     private String name;
     private String image;
     private Boolean status;
     private String description;
-    // @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     @Column(name = "created_at")
     private LocalDateTime createdAt;
-    // @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 
     public Category() {
     }
 
-    public Category(Long id, String name, String image, Boolean status, String description, LocalDateTime createdAt, LocalDateTime updatedAt) {
+    public Category(UUID id, String name, String image, Boolean status, String description, LocalDateTime createdAt, LocalDateTime updatedAt, LocalDateTime deletedAt) {
         this.id = id;
         this.name = name;
         this.image = image;
@@ -33,13 +33,14 @@ public class Category {
         this.description = description;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+        this.deletedAt = deletedAt;
     }
 
-    public Long getId() {
+    public UUID getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(UUID id) {
         this.id = id;
     }
 
@@ -91,11 +92,17 @@ public class Category {
         this.updatedAt = updatedAt;
     }
 
+    public LocalDateTime getDeletedAt() {
+        return deletedAt;
+    }
+
+    public void setDeletedAt(LocalDateTime deletedAt) {
+        this.deletedAt = deletedAt;
+    }
+
     @PrePersist
     void onCreated() {
-        if (this.status == null) {
-            this.status = true;
-        }
+        this.status = true;
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
     }

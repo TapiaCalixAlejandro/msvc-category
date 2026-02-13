@@ -1,13 +1,11 @@
 package com.ecommerce.category.models.dtos;
 
-import jakarta.persistence.Column;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 public class CategoryRequest {
     @NotBlank(message = "El nombre es obligatorio.")
     @Size(min = 3, max = 100, message = "El nombre debe tener entre 3 y 100 caracteres.")
-    //@Column(unique = true, nullable = false)
     private String name;
     @NotBlank(message = "La descripción es obligatoria.")
     @Size(min = 20, max =255, message = "La descripción no puede tener menos de 20 y exceder 255 caracteres.")

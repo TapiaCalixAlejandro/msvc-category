@@ -1,9 +1,10 @@
 package com.ecommerce.category.models.dtos;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 public class CategoryResponse {
-    private Long id;
+    private UUID id;
     private String name;
     private String image;
     private boolean status;
@@ -14,7 +15,7 @@ public class CategoryResponse {
     public CategoryResponse() {
     }
 
-    public CategoryResponse(Long id, String name, String image, boolean status, String description, LocalDateTime createdAt, LocalDateTime updatedAt) {
+    public CategoryResponse(UUID id, String name, String image, boolean status, String description, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
         this.name = name;
         this.image = image;
@@ -24,11 +25,11 @@ public class CategoryResponse {
         this.updatedAt = updatedAt;
     }
 
-    public Long getId() {
+    public UUID getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(UUID id) {
         this.id = id;
     }
 

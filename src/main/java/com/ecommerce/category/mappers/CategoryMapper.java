@@ -3,10 +3,12 @@ package com.ecommerce.category.mappers;
 import com.ecommerce.category.models.dtos.CategoryRequest;
 import com.ecommerce.category.models.dtos.CategoryResponse;
 import com.ecommerce.category.models.entities.Category;
+import org.springframework.stereotype.Component;
 
+@Component
 public class CategoryMapper {
     //  Convierte DTO -> Entidad
-    public static Category toEntity(CategoryRequest dto) {
+    public Category toEntity(CategoryRequest dto) {
         Category category = new Category();
         category.setName(dto.getName());
         category.setDescription(dto.getDescription());
@@ -16,7 +18,7 @@ public class CategoryMapper {
     }
 
     //  Convierte Entidad -> DTO
-    public static CategoryResponse toResponse(Category category) {
+    public CategoryResponse toResponse(Category category) {
         CategoryResponse response = new CategoryResponse();
         response.setId(category.getId());
         response.setName(category.getName());
