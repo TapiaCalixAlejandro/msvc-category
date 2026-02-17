@@ -52,17 +52,9 @@ public class CategoryController {
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<?> create(@RequestPart String category, @RequestPart(required = false) MultipartFile file) throws JsonProcessingException {
-        //  Convertimos JSON a DTO
-        CategoryRequest request = objectMapper.readValue(category, CategoryRequest.class);
-        //  Centralizar la validación
-        Map<String, String> errors = categoryValidator.validate(request, file, false);
-        if (!errors.isEmpty()) {
-            return ResponseEntity.badRequest().body(errors);
-        }
+    public ResponseEntity<?> create(@Valid @RequestPart CategoryRequest request, @RequestPart(required = false) MultipartFile file) {
         //  Usamos el servicio que retorna CategoryResponse directamente
-        CategoryResponse response = categoryService.createCategory(request, file);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseEntity.status(HttpStatus.CREATED).body(categoryService.createCategory(request, file));
     }
 
     @GetMapping("/{id}")
