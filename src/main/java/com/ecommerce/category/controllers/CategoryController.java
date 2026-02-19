@@ -63,17 +63,8 @@ public class CategoryController {
     }
 
     @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<?> update(@PathVariable UUID id, @RequestPart @Valid String category, @RequestPart(required = false) MultipartFile file) throws JsonProcessingException {
-        //  Convertimos el JSON recibido a CategoryRequest
-        CategoryRequest request = objectMapper.readValue(category, CategoryRequest.class);
-        //  Centralizar validación
-        Map<String, String> errors = categoryValidator.validate(request, file, true);
-        if (!errors.isEmpty())
-            return ResponseEntity.badRequest().body(errors);
-        //  Llamamos al servicio y retornamos el ResponseEntity con el CategoryResponse
-        CategoryResponse response = categoryService.updateCategory(id, request, file)
-                .orElseThrow(() -> new ResourceNotFoundException("La categoría con ID " + id + " no existe."));
-        return ResponseEntity.ok(response);
+    public ResponseEntity<?> update(@PathVariable UUID id, @Valid @RequestPart CategoryRequest request, @RequestPart(required = false) MultipartFile file) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(categoryService.updateCategory(id, request, file));
     }
 
     @DeleteMapping("/{id}")

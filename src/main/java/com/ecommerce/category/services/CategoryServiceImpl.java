@@ -6,33 +6,39 @@ import com.ecommerce.category.models.dtos.CategoryRequest;
 import com.ecommerce.category.models.dtos.CategoryResponse;
 import com.ecommerce.category.models.entities.Category;
 import com.ecommerce.category.repositories.CategoryRepository;
+import com.ecommerce.category.validations.CategoryValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+/**
+ * Implementación del servicio de Catgeoria
+ */
 @Service
 public class CategoryServiceImpl implements CategoryService {
     private static final Logger log = LoggerFactory.getLogger(CategoryServiceImpl.class);
+    private final FileStorageService fileStorageService;
     private final CategoryRepository categoryRepository;
+    private final CategoryValidator categoryValidator;
     private final CategoryMapper categoryMapper;
-    @Value("${app.upload.dir}")
-    private String uploadDir;
 
-    public CategoryServiceImpl(CategoryRepository categoryRepository, CategoryMapper categoryMapper) {
+    public CategoryServiceImpl(
+            FileStorageService fileStorageService,
+            CategoryRepository categoryRepository,
+            CategoryValidator categoryValidator,
+            CategoryMapper categoryMapper
+    ) {
+        this.fileStorageService = fileStorageService;
         this.categoryRepository = categoryRepository;
+        this.categoryValidator = categoryValidator;
         this.categoryMapper = categoryMapper;
     }
 
@@ -62,34 +68,33 @@ public class CategoryServiceImpl implements CategoryService {
     @Transactional
     @Override
     public CategoryResponse createCategory(CategoryRequest request, MultipartFile file) {
-        log.info("Creando nueva categoria: {}", request.getName());
+        log.info("Iniciando proceso de creación de nueva categoria");
         //  Validar nombre unico
-        if (categoryRepository.existsByName(request.getName())) {
-            throw new BusinessException("Ya existe una categoría con el nombre: " + request.getName());
-        }
-        //Category savedCategory = null;
-        try {
-            //  Convertir DTO en Entidad
-            Category category = categoryMapper.toEntity(request);
+//        if (categoryRepository.existsByName(request.getName())) {
+//            throw new BusinessException("Ya existe una categoría con el nombre: " + request.getName());
+//        }
+        categoryValidator.validateOnCreate(request, file);
+        //  Convertir DTO en Entidad
+        Category category = categoryMapper.toEntity(request);
 
-            //  Creamos primero sin imagen (para obtener el ID)
-            Category savedCategory = categoryRepository.save(category);
-            log.info("Categoría: {} creada correctamente.", request.getName());
+        //  Creamos primero sin imagen (para obtener el ID)
+        Category savedCategory = categoryRepository.save(category);
+        log.info("Categoría: {} creada correctamente.", request.getName());
 
-            //  Si hay imagen la guardamos en el sistema de archivos
-            if (file != null && !file.isEmpty()) {
-                String fileName = handleImageUpload(file, null, savedCategory.getId());
-                category.setImage(fileName);
+        //  Si hay imagen la guardamos en el sistema de archivos
+        if (file != null && !file.isEmpty()) {
+            try {
+                String fileName = fileStorageService.saveCategoryImage(file, savedCategory.getId(), null);
+                savedCategory.setImage(fileName);
                 categoryRepository.save(savedCategory);
                 log.info("Imagen guardada correctamente para la categoría: {}", category.getName());
+            } catch (IOException e) {
+                log.error("Error al guardar la imagen de la categoría '{}': {}", request.getName(), e.getMessage());
+                throw new FileStorageException("Error al subir archivo: " + e.getMessage(), e);
             }
-
-            //  Devolvemos el DTO de respuesta
-            return categoryMapper.toResponse(savedCategory);
-        } catch (IOException e) {
-            log.error("Error al guardar la imagen de la categoría '{}': {}", request.getName(), e.getMessage());
-            throw new FileStorageException("Error al subir archivo: " + e.getMessage(), e);
         }
+        //  Devolvemos el DTO de respuesta
+        return categoryMapper.toResponse(savedCategory);
     }
 
     //  Buscar categoria por ID
@@ -124,30 +129,29 @@ public class CategoryServiceImpl implements CategoryService {
                     log.error("No se encontró categoría con ID: {}", id);
                     return new ResourceNotFoundException("La categoria con ID: " + id + " no existe.");
                 });
-        //  Validación de nombre unico (solo si cambia)
-        if (!exists.getName().equals(request.getName()) && categoryRepository.existsByName(request.getName()))
-            throw new BusinessException("Ya existe una categoría con el nombre: " + request.getName());
 
-        try {
-            //  Actaulizar campos
-            exists.setName(request.getName());
-            exists.setStatus(request.getStatus());
-            exists.setDescription(request.getDescription());
+        categoryValidator.validateOnUpdate(id, request, file);
 
-            //  Si se envia una nueva imagen se procesa
-            if (file != null && !file.isEmpty()) {
-                String newImageName = handleImageUpload(file, exists.getImage(), id);
+        //  Actaulizar campos
+        exists.setName(request.getName());
+        exists.setStatus(request.getStatus());
+        exists.setDescription(request.getDescription());
+
+        if (file != null && !file.isEmpty()) {
+            try {
+                //  Si se envia una nueva imagen se procesa
+                String newImageName = fileStorageService.saveCategoryImage(file, id, exists.getImage());
                 exists.setImage(newImageName);
                 log.info("Imagen actualizada para la categoría: {}", request.getName());
+            } catch (IOException e) {
+                log.error("Error al actualizar categoría con ID {} : {}", id,e.getMessage(),e);
+                throw new FileStorageException("Error al actualizar archivo: " + e.getMessage(), e);
             }
-
-            Category update = categoryRepository.save(exists);
-            log.info("Categoría actualizada correctamente con ID: {}", update.getId());
-            return Optional.of(categoryMapper.toResponse(update));
-        } catch (IOException e) {
-            log.error("Error al actualizar categoría con ID {} : {}", id,e.getMessage(),e);
-            throw new FileStorageException("Error al actualizar archivo: " + e.getMessage(), e);
         }
+
+        Category update = categoryRepository.save(exists);
+        log.info("Categoría actualizada correctamente con ID: {}", update.getId());
+        return Optional.of(categoryMapper.toResponse(update));
     }
 
     //  Eliminar categoria
@@ -161,7 +165,7 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     //  Metodo reutilizable para manejar la logica de la imagen (Creacion y modificacion)
-    private String handleImageUpload(MultipartFile file, String oldImageName, UUID id) throws IOException {
+    /*private String handleImageUpload(MultipartFile file, String oldImageName, UUID id) throws IOException {
         Path uploadPath = Paths.get(uploadDir);
         if (!Files.exists(uploadPath)) {
             Files.createDirectories(uploadPath);
@@ -180,12 +184,5 @@ public class CategoryServiceImpl implements CategoryService {
         log.debug("Nueva imagen guardada en: {}", filePath);
 
         return newFileName;
-    }
-
-    //  Paginacion
-    //@Transactional(readOnly = true)
-    //@Override
-    //public Page<CategoryResponse> getAllPaged(Pageable pageable) {
-    //    return categoryRepository.findAll(pageable).map(CategoryMapper::toResponse);    //  Convertimos cada entidad en DTO
-    //}
+    }*/
 }
