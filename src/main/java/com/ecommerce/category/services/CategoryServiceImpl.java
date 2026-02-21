@@ -69,10 +69,6 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     public CategoryResponse createCategory(CategoryRequest request, MultipartFile file) {
         log.info("Iniciando proceso de creación de nueva categoria");
-        //  Validar nombre unico
-//        if (categoryRepository.existsByName(request.getName())) {
-//            throw new BusinessException("Ya existe una categoría con el nombre: " + request.getName());
-//        }
         categoryValidator.validateOnCreate(request, file);
         //  Convertir DTO en Entidad
         Category category = categoryMapper.toEntity(request);
@@ -87,7 +83,7 @@ public class CategoryServiceImpl implements CategoryService {
                 String fileName = fileStorageService.saveCategoryImage(file, savedCategory.getId(), null);
                 savedCategory.setImage(fileName);
                 categoryRepository.save(savedCategory);
-                log.info("Imagen guardada correctamente para la categoría: {}", category.getName());
+                log.info("Imagen guardada correctamente para la categoría: {}", savedCategory.getName());
             } catch (IOException e) {
                 log.error("Error al guardar la imagen de la categoría '{}': {}", request.getName(), e.getMessage());
                 throw new FileStorageException("Error al subir archivo: " + e.getMessage(), e);
@@ -100,13 +96,13 @@ public class CategoryServiceImpl implements CategoryService {
     //  Buscar categoria por ID
     @Transactional(readOnly = true)
     @Override
-    public Optional<CategoryResponse> findCategory(UUID id) {
+    public CategoryResponse findCategory(UUID id) {
         log.info("Obteniendo detalle de categoría con ID: {}", id);
         Category category = categoryRepository.findById(id).orElseThrow(() -> {
             log.warn("No se encontró la categoría con ID: {}", id);
             return new ResourceNotFoundException("La categoria con el ID: " + id + " no existe.");
         });
-        return Optional.of(categoryMapper.toResponse(category));
+        return categoryMapper.toResponse(category);
     }
 
     //  Buscar varias categorias por ID
@@ -163,26 +159,4 @@ public class CategoryServiceImpl implements CategoryService {
         }
         categoryRepository.deleteById(id);
     }
-
-    //  Metodo reutilizable para manejar la logica de la imagen (Creacion y modificacion)
-    /*private String handleImageUpload(MultipartFile file, String oldImageName, UUID id) throws IOException {
-        Path uploadPath = Paths.get(uploadDir);
-        if (!Files.exists(uploadPath)) {
-            Files.createDirectories(uploadPath);
-            log.debug("Directorio de carga creado: {}", uploadPath);
-        }
-        //  Si existe una imagen anterior la borramos
-        if (oldImageName != null) {
-            Path oldImagePath = uploadPath.resolve(Paths.get(oldImageName).getFileName().toString());
-            Files.deleteIfExists(oldImagePath);
-            log.debug("Imagen anterior eliminada: {}", oldImagePath);
-        }
-        //  Guardar nueva imagen
-        String newFileName = "category_" + id + "_" + System.currentTimeMillis() + "_" + file.getOriginalFilename();
-        Path filePath = uploadPath.resolve(newFileName);
-        Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
-        log.debug("Nueva imagen guardada en: {}", filePath);
-
-        return newFileName;
-    }*/
 }

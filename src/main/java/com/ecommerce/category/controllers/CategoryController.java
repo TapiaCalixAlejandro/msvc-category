@@ -1,12 +1,10 @@
 package com.ecommerce.category.controllers;
 
-import com.ecommerce.category.exceptions.ResourceNotFoundException;
 import com.ecommerce.category.models.dtos.CategoryRequest;
 import com.ecommerce.category.models.dtos.CategoryResponse;
 import com.ecommerce.category.services.CategoryFilterService;
 import com.ecommerce.category.services.CategoryService;
 import com.ecommerce.category.validations.CategoryValidator;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -17,7 +15,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 @CrossOrigin(origins = {"http://localhost:4200"})
@@ -59,7 +56,8 @@ public class CategoryController {
 
     @GetMapping("/{id}")
     public ResponseEntity<CategoryResponse> detail(@PathVariable UUID id) {
-        return categoryService.findCategory(id).map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
+        //return categoryService.findCategory(id).map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
+        return ResponseEntity.ok(categoryService.findCategory(id));
     }
 
     @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

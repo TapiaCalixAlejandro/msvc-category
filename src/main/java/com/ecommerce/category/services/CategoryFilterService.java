@@ -2,7 +2,6 @@ package com.ecommerce.category.services;
 
 import com.ecommerce.category.models.dtos.CategoryResponse;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 
 public interface CategoryFilterService {
     Page<CategoryResponse> filterCategory(

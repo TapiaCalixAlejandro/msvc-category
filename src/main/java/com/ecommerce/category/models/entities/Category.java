@@ -105,14 +105,14 @@ public class Category {
     }
 
     @PrePersist
-    void onCreated() {
+    public void onCreated() {
         this.status = true;
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
     }
 
     @PreUpdate
-    void onUpdate() {
+    public void onUpdate() {
         this.updatedAt = LocalDateTime.now();
     }
 }

@@ -13,7 +13,7 @@ public interface CategoryRepository extends JpaRepository<Category, UUID> {
     //Page<Category> findAll(Pageable pageable);
     boolean existsById(UUID id);
     boolean existsByName(String name);
-    boolean existsByNameAndIdNot(UUID id, String name);
+    boolean existsByNameAndIdNot(String name, UUID id);
 
     @Query("""
         SELECT DISTINCT c FROM Category c

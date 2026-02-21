@@ -26,7 +26,7 @@ public class BusinessValidator {
     }
 
     public void validateUniqueNameOnUpdate(UUID id, String name) {
-        if (categoryRepository.existsByNameAndIdNot(id, name)) {
+        if (categoryRepository.existsByNameAndIdNot(name, id)) {
             throw new BusinessException("El nombre de la categoría '" + name + "' ya está en uso por otra categoría.");
         }
     }
